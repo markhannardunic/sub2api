@@ -1,0 +1,70 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
+	"github.com/sub2api/sub2api/handler"
+)
+
+const (
+	defaultPort    = 8080
+	defaultHost    = "0.0.0.0"
+	appName        = "sub2api"
+	appVersion     = "1.0.0"
+)
+
+func main() {
+	var (
+		host    string
+		port    int
+		version bool
+	)
+
+	flag.StringVar(&host, "host", getEnvStr("HOST", defaultHost), "Host address to listen on")
+	flag.IntVar(&port, "port", getEnvInt("PORT", defaultPort), "Port to listen on")
+	flag.BoolVar(&version, "version", false, "Print version information and exit")
+	flag.Parse()
+
+	if version {
+		fmt.Printf("%s version %s\n", appName, appVersion)
+		os.Exit(0)
+	}
+
+	router := handler.NewRouter()
+
+	addr := fmt.Sprintf("%s:%d", host, port)
+	log.Printf("Starting %s v%s on %s", appName, appVersion, addr)
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// getEnvStr retrieves a string environment variable or returns a default value.
+func getEnvStr(key, defaultVal string) string {
+	if val, ok := os.LookupEnv(key); ok {
+		return val
+	}
+	return defaultVal
+}
+
+// getEnvInt retrieves an integer environment variable or returns a default value.
+func getEnvInt(key string, defaultVal int) int {
+	if val, ok := os.LookupEnv(key); ok {
+		if i, err := strconv.Atoi(val); err == nil {
+			return i
+		}
+		log.Printf("Warning: invalid integer value for %s, using default %d", key, defaultVal)
+	}
+	return defaultVal
+}
